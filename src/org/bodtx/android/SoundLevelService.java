@@ -2,6 +2,8 @@ package org.bodtx.android;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 
 import android.app.Service;
@@ -10,6 +12,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,9 +22,11 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class SoundLevelService extends Service {
-	Bundle messageBundle = new Bundle();
-	private Handler mHandler = new Handler();
-	public static final int ONE_HOUR = 5000;
+//	private Handler mHandler = new Handler();
+	public static final int ONE_HOUR = 1000 * 60 * 30;
+	Timer timer = new Timer();
+
+	// public static final int ONE_HOUR = 5000;
 
 	// Handler handler = new Handler() {
 	// @Override
@@ -30,73 +35,11 @@ public class SoundLevelService extends Service {
 	// }
 	// };
 
-	private Runnable periodicTask = new Runnable() {
-		public void run() {
-			Log.i("PeriodicTimerService", "Awake");
-
-			BluetoothAdapter mBluetoothAdapter = BluetoothAdapter
-					.getDefaultAdapter();
-
-			if (!mBluetoothAdapter.isEnabled()) {
-				mBluetoothAdapter.enable();
-			} else {
-
-				BluetoothDevice device = null;
-
-				Set<BluetoothDevice> bondedDevices = mBluetoothAdapter
-						.getBondedDevices();
-				for (BluetoothDevice bondedDevice : bondedDevices) {
-					if (bondedDevice.getName().equals("HC-05")) {
-						device = bondedDevice;
-					}
-				}
-				if (device == null) {
-					Log.i("PeriodicTimerService", "Erreur HC-05 non appairé\n");
-				}
-				 mBluetoothAdapter.cancelDiscovery();
-				 BluetoothSocket socket=null;
-				try {
-					socket = device
-							.createInsecureRfcommSocketToServiceRecord(UUID
-									.fromString("00001101-0000-1000-8000-00805F9B34FB"));
-					
-					socket.connect();
-					Thread.sleep(1000);
-					setRingMode(AudioManager.RINGER_MODE_NORMAL);
-					
-				} catch (IOException e) {
-					setRingMode(AudioManager.RINGER_MODE_VIBRATE);
-					Log.e("error", e.getMessage(),e);
-				} catch (InterruptedException e) {
-					Log.e("error", e.getMessage(),e);
-				}
-				finally{
-					try {
-						socket.close();
-					} catch (IOException e) {
-						Log.e("error", "la socket se ferme plus :o");
-					}
-				}
-			}
-
-			mHandler.postDelayed(periodicTask, ONE_HOUR);
-			// messageBundle.putString("bip", "bip");
-			// Message obtainMessage = handler.obtainMessage();
-			// obtainMessage.setData(messageBundle);
-			// handler.sendMessage(obtainMessage);
-
-		}
-
-	};
-
-	@Override
-	public IBinder onBind(Intent intent) {
-		return null;
-	}
-
 	@Override
 	public void onCreate() {
-		mHandler.postDelayed(periodicTask, ONE_HOUR);
+		// boolean postDelayed = mHandler.postDelayed(periodicTask, ONE_HOUR);
+		timer.scheduleAtFixedRate(new PeriodicTask(), 0, 1000*60*30);
+		// Log.i("isDelayed", String.valueOf(postDelayed));
 
 	}
 
@@ -110,7 +53,74 @@ public class SoundLevelService extends Service {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		mHandler.removeCallbacks(periodicTask);
+		// mHandler.removeCallbacks(periodicTask);
 		Toast.makeText(this, "Service onDestroy() ", Toast.LENGTH_LONG).show();
 	}
+
+	private class PeriodicTask extends TimerTask {
+
+		public void run() {
+			try {
+				Log.i("PeriodicTimerService", "Awake");
+
+				BluetoothAdapter mBluetoothAdapter = BluetoothAdapter
+						.getDefaultAdapter();
+
+				if (!mBluetoothAdapter.isEnabled()) {
+					mBluetoothAdapter.enable();
+				} else {
+
+					BluetoothDevice device = null;
+
+					// Set<BluetoothDevice> bondedDevices = mBluetoothAdapter
+					// .getBondedDevices();
+					device = mBluetoothAdapter
+							.getRemoteDevice("20:13:10:15:38:91");
+					// for (BluetoothDevice bondedDevice : bondedDevices) {
+					// if (bondedDevice.getName().equals("HC-05")) {
+					// device = bondedDevice;
+					// }
+					// }
+					if (device == null) {
+						Log.i("PeriodicTimerService",
+								"Erreur HC-05 non present\n");
+					}
+					mBluetoothAdapter.cancelDiscovery();
+					BluetoothSocket socket = null;
+						socket = device
+								.createInsecureRfcommSocketToServiceRecord(UUID
+										.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+
+					try {
+						socket.connect();
+						Thread.sleep(1000);
+						setRingMode(AudioManager.RINGER_MODE_NORMAL);
+
+					} catch (IOException e) {
+//						setRingMode(AudioManager.RINGER_MODE_VIBRATE);
+						Log.e("error", e.getMessage(), e);
+					} catch (InterruptedException e) {
+						Log.e("error", e.getMessage(), e);
+					} finally {
+						try {
+							socket.close();
+						} catch (IOException e) {
+							Log.e("error", "la socket se ferme plus :o");
+						}
+					}
+				}
+			} catch (Throwable e) {
+				Log.e("erreur", "sortie", e);
+			}
+
+//			mHandler.postDelayed(new PeriodicTask(), ONE_HOUR);
+
+		}
+
+	}
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		return null;
+	};
 }
