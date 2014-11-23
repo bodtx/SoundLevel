@@ -5,6 +5,8 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -22,9 +24,10 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class SoundLevelService extends Service {
-//	private Handler mHandler = new Handler();
-	public static final int ONE_HOUR = 1000 * 60 * 30;
-	Timer timer = new Timer();
+	// private Handler mHandler = new Handler();
+	// public static final int ONE_HOUR = 1000 * 60 * 30;
+//	Timer timer = new Timer();
+	ScheduledThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(1);
 
 	// public static final int ONE_HOUR = 5000;
 
@@ -38,7 +41,8 @@ public class SoundLevelService extends Service {
 	@Override
 	public void onCreate() {
 		// boolean postDelayed = mHandler.postDelayed(periodicTask, ONE_HOUR);
-		timer.scheduleAtFixedRate(new PeriodicTask(), 0, 1000*60*30);
+//		timer.scheduleAtFixedRate(new PeriodicTask(), 0, 1000 * 60 * 30);
+		pool.scheduleWithFixedDelay(new PeriodicTask(), 1, 30, TimeUnit.MINUTES);
 		// Log.i("isDelayed", String.valueOf(postDelayed));
 
 	}
@@ -54,10 +58,11 @@ public class SoundLevelService extends Service {
 	public void onDestroy() {
 		super.onDestroy();
 		// mHandler.removeCallbacks(periodicTask);
+		pool.shutdown();
 		Toast.makeText(this, "Service onDestroy() ", Toast.LENGTH_LONG).show();
 	}
 
-	private class PeriodicTask extends TimerTask {
+	private class PeriodicTask implements Runnable {
 
 		public void run() {
 			try {
@@ -87,33 +92,33 @@ public class SoundLevelService extends Service {
 					}
 					mBluetoothAdapter.cancelDiscovery();
 					BluetoothSocket socket = null;
-						socket = device
-								.createInsecureRfcommSocketToServiceRecord(UUID
-										.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+					socket = device
+							.createInsecureRfcommSocketToServiceRecord(UUID
+									.fromString("00001101-0000-1000-8000-00805F9B34FB"));
 
-					try {
-						socket.connect();
-						Thread.sleep(1000);
-						setRingMode(AudioManager.RINGER_MODE_NORMAL);
-
-					} catch (IOException e) {
-//						setRingMode(AudioManager.RINGER_MODE_VIBRATE);
-						Log.e("error", e.getMessage(), e);
-					} catch (InterruptedException e) {
-						Log.e("error", e.getMessage(), e);
-					} finally {
 						try {
-							socket.close();
+							socket.connect();
+							Thread.sleep(1000);
+							setRingMode(AudioManager.RINGER_MODE_NORMAL);
+
 						} catch (IOException e) {
-							Log.e("error", "la socket se ferme plus :o");
+							// setRingMode(AudioManager.RINGER_MODE_VIBRATE);
+							Log.e("error", e.getMessage(), e);
+						} catch (InterruptedException e) {
+							Log.e("error", e.getMessage(), e);
+						} finally {
+							try {
+								socket.close();
+							} catch (IOException e) {
+								Log.e("error", "la socket se ferme plus :o");
+							}
 						}
-					}
 				}
 			} catch (Throwable e) {
 				Log.e("erreur", "sortie", e);
 			}
 
-//			mHandler.postDelayed(new PeriodicTask(), ONE_HOUR);
+			// mHandler.postDelayed(new PeriodicTask(), ONE_HOUR);
 
 		}
 
