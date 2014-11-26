@@ -1,9 +1,8 @@
 package org.bodtx.android;
 
 import java.io.IOException;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -14,20 +13,19 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.media.AudioManager;
-import android.os.Bundle;
-import android.os.Handler;
+import android.net.Uri;
 import android.os.IBinder;
-import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
 public class SoundLevelService extends Service {
 	// private Handler mHandler = new Handler();
 	// public static final int ONE_HOUR = 1000 * 60 * 30;
-//	Timer timer = new Timer();
+	// Timer timer = new Timer();
 	ScheduledThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(1);
+
+	boolean isAuBoulot = false;
 
 	// public static final int ONE_HOUR = 5000;
 
@@ -41,17 +39,21 @@ public class SoundLevelService extends Service {
 	@Override
 	public void onCreate() {
 		// boolean postDelayed = mHandler.postDelayed(periodicTask, ONE_HOUR);
-//		timer.scheduleAtFixedRate(new PeriodicTask(), 0, 1000 * 60 * 30);
-		pool.scheduleWithFixedDelay(new PeriodicTask(), 1, 30, TimeUnit.MINUTES);
+		// timer.scheduleAtFixedRate(new PeriodicTask(), 0, 1000 * 60 * 30);
+		pool.scheduleWithFixedDelay(new PeriodicTask(this), 1, 30, TimeUnit.MINUTES);
 		// Log.i("isDelayed", String.valueOf(postDelayed));
 
 	}
 
 	private void setRingMode(int ringMode) {
 
-		AudioManager audioManager = (AudioManager) this
-				.getSystemService(Context.AUDIO_SERVICE);
+		AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
 		audioManager.setRingerMode(ringMode);
+		if (ringMode == AudioManager.RINGER_MODE_NORMAL) {
+			// TODO pourquoi 1?
+			audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL,
+					audioManager.getStreamVolume(AudioManager.STREAM_VOICE_CALL), 1);
+		}
 	}
 
 	@Override
@@ -63,63 +65,69 @@ public class SoundLevelService extends Service {
 	}
 
 	private class PeriodicTask implements Runnable {
+		Context serviceContext;
+
+		public PeriodicTask(Context serviceContext) {
+			super();
+			this.serviceContext = serviceContext;
+		}
 
 		public void run() {
-			try {
-				Log.i("PeriodicTimerService", "Awake");
-
-				BluetoothAdapter mBluetoothAdapter = BluetoothAdapter
-						.getDefaultAdapter();
-
-				if (!mBluetoothAdapter.isEnabled()) {
-					mBluetoothAdapter.enable();
-				} else {
-
-					BluetoothDevice device = null;
-
-					// Set<BluetoothDevice> bondedDevices = mBluetoothAdapter
-					// .getBondedDevices();
-					device = mBluetoothAdapter
-							.getRemoteDevice("20:13:10:15:38:91");
-					// for (BluetoothDevice bondedDevice : bondedDevices) {
-					// if (bondedDevice.getName().equals("HC-05")) {
-					// device = bondedDevice;
-					// }
-					// }
-					if (device == null) {
-						Log.i("PeriodicTimerService",
-								"Erreur HC-05 non present\n");
-					}
-					mBluetoothAdapter.cancelDiscovery();
-					BluetoothSocket socket = null;
-					socket = device
-							.createInsecureRfcommSocketToServiceRecord(UUID
-									.fromString("00001101-0000-1000-8000-00805F9B34FB"));
-
-						try {
-							socket.connect();
-							Thread.sleep(1000);
-							setRingMode(AudioManager.RINGER_MODE_NORMAL);
-
-						} catch (IOException e) {
-							// setRingMode(AudioManager.RINGER_MODE_VIBRATE);
-							Log.e("error", e.getMessage(), e);
-						} catch (InterruptedException e) {
-							Log.e("error", e.getMessage(), e);
-						} finally {
-							try {
-								socket.close();
-							} catch (IOException e) {
-								Log.e("error", "la socket se ferme plus :o");
-							}
-						}
+			Log.i("PeriodicTimerService", "Awake");
+			
+			int jourSemaine = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
+			if (jourSemaine != Calendar.SATURDAY || jourSemaine != Calendar.SUNDAY) {
+				if (false/*connectToDevice("boulot")*/) {
+					setRingMode(AudioManager.RINGER_MODE_VIBRATE);
+					isAuBoulot = true;
+				} else if (isAuBoulot && Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 16) {
+					Intent smsIntent = new Intent(Intent.ACTION_SENDTO, Uri.parse("sms:0687419862"));
+					smsIntent.putExtra("sms_body", "Je probablement déjà parti du boulot :-)");
+					startActivity(smsIntent);
+					setRingMode(AudioManager.RINGER_MODE_NORMAL);
+					isAuBoulot = false;
 				}
-			} catch (Throwable e) {
-				Log.e("erreur", "sortie", e);
 			}
+			
+			if (!isAuBoulot) {
+				if (connectToDevice("20:13:10:15:38:91")) {
+					setRingMode(AudioManager.RINGER_MODE_NORMAL);
+				}
+			}
+		}
 
-			// mHandler.postDelayed(new PeriodicTask(), ONE_HOUR);
+		private boolean connectToDevice(String macDevice) {
+			boolean success = false;
+			BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
+			if (!mBluetoothAdapter.isEnabled()) {
+				mBluetoothAdapter.enable();
+			} else {
+
+				BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(macDevice);
+				if (device == null) {
+					Log.i("connectToDevice", "Device " + macDevice + " non present\n");
+				}
+				mBluetoothAdapter.cancelDiscovery();
+				BluetoothSocket socket = null;
+				try {
+					socket = device.createInsecureRfcommSocketToServiceRecord(UUID
+							.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+
+					socket.connect();
+					Thread.sleep(1000);
+					success = true;
+				} catch (Exception e) {
+					Log.e("error", e.getMessage(), e);
+				} finally {
+					try {
+						socket.close();
+					} catch (IOException e) {
+						Log.e("error", "la socket se ferme plus :o");
+					}
+				}
+			}
+			return success;
 		}
 
 	}
