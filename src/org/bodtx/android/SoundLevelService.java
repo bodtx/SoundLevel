@@ -20,57 +20,32 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class SoundLevelService extends Service {
-	// private Handler mHandler = new Handler();
-	// public static final int ONE_HOUR = 1000 * 60 * 30;
-	// Timer timer = new Timer();
 	ScheduledThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(1);
-
 	boolean isAuBoulot = false;
-
-	// public static final int ONE_HOUR = 5000;
-
-	// Handler handler = new Handler() {
-	// @Override
-	// public void handleMessage(Message msg) {
-	//
-	// }
-	// };
 
 	@Override
 	public void onCreate() {
-		// boolean postDelayed = mHandler.postDelayed(periodicTask, ONE_HOUR);
-		// timer.scheduleAtFixedRate(new PeriodicTask(), 0, 1000 * 60 * 30);
-		pool.scheduleWithFixedDelay(new PeriodicTask(this), 1, 30, TimeUnit.MINUTES);
-		// Log.i("isDelayed", String.valueOf(postDelayed));
-
+		pool.scheduleWithFixedDelay(new PeriodicTask(), 1, 30, TimeUnit.MINUTES);
 	}
 
 	private void setRingMode(int ringMode) {
-
 		AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
 		audioManager.setRingerMode(ringMode);
 		if (ringMode == AudioManager.RINGER_MODE_NORMAL) {
 			// TODO pourquoi 1?
 			audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL,
-					audioManager.getStreamVolume(AudioManager.STREAM_VOICE_CALL), 1);
+					audioManager.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL), 1);
 		}
 	}
 
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		// mHandler.removeCallbacks(periodicTask);
 		pool.shutdown();
 		Toast.makeText(this, "Service onDestroy() ", Toast.LENGTH_LONG).show();
 	}
 
 	private class PeriodicTask implements Runnable {
-		Context serviceContext;
-
-		public PeriodicTask(Context serviceContext) {
-			super();
-			this.serviceContext = serviceContext;
-		}
 
 		public void run() {
 			Log.i("PeriodicTimerService", "Awake");
@@ -82,7 +57,7 @@ public class SoundLevelService extends Service {
 					isAuBoulot = true;
 				} else if (isAuBoulot && Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 16) {
 					Intent smsIntent = new Intent(Intent.ACTION_SENDTO, Uri.parse("sms:0687419862"));
-					smsIntent.putExtra("sms_body", "Je probablement déjà parti du boulot :-)");
+					smsIntent.putExtra("sms_body", "Je suis probablement déjà parti du boulot :-)");
 					startActivity(smsIntent);
 					setRingMode(AudioManager.RINGER_MODE_NORMAL);
 					isAuBoulot = false;
