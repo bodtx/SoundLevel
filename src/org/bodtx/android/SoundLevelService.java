@@ -2,11 +2,13 @@ package org.bodtx.android;
 
 import java.io.IOException;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.bodtx.soundLevel.R;
+
+import android.app.Notification;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -16,6 +18,7 @@ import android.content.Intent;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -25,6 +28,11 @@ public class SoundLevelService extends Service {
 
 	@Override
 	public void onCreate() {
+		NotificationCompat.Builder notification = new NotificationCompat.Builder(this)
+	    .setSmallIcon(R.drawable.ic_launcher)
+	    .setContentTitle("Gestion du mode");
+		
+		startForeground(1, notification.build());
 		pool.scheduleWithFixedDelay(new PeriodicTask(), 1, 30, TimeUnit.MINUTES);
 	}
 
@@ -41,6 +49,7 @@ public class SoundLevelService extends Service {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
+		stopForeground(true);
 		pool.shutdown();
 		Toast.makeText(this, "Service onDestroy() ", Toast.LENGTH_LONG).show();
 	}
