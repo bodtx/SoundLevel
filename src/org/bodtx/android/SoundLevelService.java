@@ -21,6 +21,7 @@ import android.net.Uri;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -80,20 +81,12 @@ public class SoundLevelService extends Service {
 			Log.i("PeriodicTimerService", "Awake");
 
 			int jourSemaine = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
-			if (/*
-				 * jourSemaine != Calendar.SATURDAY && jourSemaine !=
-				 * Calendar.SUNDAY
-				 */false) {
-				if (connectToDevice("00:15:83:3d:0a:57")) {
+			if (jourSemaine != Calendar.SATURDAY || jourSemaine != Calendar.SUNDAY) {
+				if (connectToDevice("30:14:10:09:00:61")) {
 					setRingMode(AudioManager.RINGER_MODE_VIBRATE);
 					isAuBoulot = true;
-				} else if (isAuBoulot
-						&& Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 16) {
-					Intent smsIntent = new Intent(Intent.ACTION_SENDTO,
-							Uri.parse("sms:0687419862"));
-					smsIntent.putExtra("sms_body",
-							"Je suis probablement d�j� parti du boulot :-)");
-					startActivity(smsIntent);
+				} else if (isAuBoulot && Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 16) {
+					SmsManager.getDefault().sendTextMessage("+33687419862", null, "Je suis probablement parti du boulot :-)", null, null);
 					setRingMode(AudioManager.RINGER_MODE_NORMAL);
 					isAuBoulot = false;
 				}
