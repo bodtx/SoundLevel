@@ -2,6 +2,7 @@ package org.bodtx.android;
 
 import java.io.IOException;
 import java.util.Calendar;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +20,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -61,13 +63,11 @@ public class SoundLevelService extends Service {
 			
 			int jourSemaine = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
 			if (jourSemaine != Calendar.SATURDAY || jourSemaine != Calendar.SUNDAY) {
-				if (false/*connectToDevice("boulot")*/) {
+				if (connectToDevice("30:14:10:09:00:61")) {
 					setRingMode(AudioManager.RINGER_MODE_VIBRATE);
 					isAuBoulot = true;
 				} else if (isAuBoulot && Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 16) {
-					Intent smsIntent = new Intent(Intent.ACTION_SENDTO, Uri.parse("sms:0687419862"));
-					smsIntent.putExtra("sms_body", "Je suis probablement déjà parti du boulot :-)");
-					startActivity(smsIntent);
+					SmsManager.getDefault().sendTextMessage("+33687419862", null, "Je suis probablement déjà parti du boulot :-)", null, null);
 					setRingMode(AudioManager.RINGER_MODE_NORMAL);
 					isAuBoulot = false;
 				}
@@ -83,6 +83,7 @@ public class SoundLevelService extends Service {
 		private boolean connectToDevice(String macDevice) {
 			boolean success = false;
 			BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+			
 
 			if (!mBluetoothAdapter.isEnabled()) {
 				mBluetoothAdapter.enable();
