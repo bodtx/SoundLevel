@@ -2,7 +2,6 @@ package org.bodtx.android;
 
 import java.io.IOException;
 import java.util.Calendar;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -17,7 +16,6 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
-import android.net.Uri;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
@@ -46,7 +44,7 @@ public class SoundLevelService extends Service {
 		wakeLock = mgr
 				.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakeLock");
 		wakeLock.acquire();
-		pool.scheduleWithFixedDelay(new PeriodicTask(), 1, 30, TimeUnit.MINUTES);
+		pool.scheduleWithFixedDelay(new PeriodicTask(), 1, 15, TimeUnit.MINUTES);
 	}
 
 	private void setRingMode(int ringMode) {
@@ -81,7 +79,7 @@ public class SoundLevelService extends Service {
 			Log.i("PeriodicTimerService", "Awake");
 
 			int jourSemaine = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
-			if (jourSemaine != Calendar.SATURDAY || jourSemaine != Calendar.SUNDAY) {
+			if (jourSemaine != Calendar.SATURDAY && jourSemaine != Calendar.SUNDAY) {
 				if (connectToDevice("30:14:10:09:00:61")) {
 					setRingMode(AudioManager.RINGER_MODE_VIBRATE);
 					isAuBoulot = true;
